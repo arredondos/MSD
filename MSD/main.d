@@ -14,6 +14,7 @@ void main(string[] argv) {
 	int count = to!int(strip(readln()));
 	if(count <= 0) return;
 
+
 	// generate ms stream
 	auto islands = ["-I", "10", "2", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1"];
 	auto ms = pipeProcess(["ms", "2", to!string(count), "-L"] ~ islands, Redirect.stdout);
@@ -101,18 +102,3 @@ auto GetHistogram(R1, R2)(R1 bins, R2 data) /*if(isInputRange!R)*/ {
 	}
 	return hist;
 }
-
-//
-//InputRange!double GetT2Values(int count) {
-//    
-//    auto islands = ["-I", "10", "2", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1"];
-//    auto ms = pipeProcess(["ms", "2", to!string(count), "-T", "-L"] ~ islands, Redirect.stdout);
-//
-//    scope(exit) 
-//        wait(ms.pid);
-//
-//    auto chunks = ms.stdout.byLine.drop(3).chunks(4);
-//    auto nums = chunks.map!(chunk => chunk.drop(2).front.splitter('\t').drop(1).front.to!double);
-//
-//    return inputRangeObject(nums);
-//}
