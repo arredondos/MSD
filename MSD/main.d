@@ -10,37 +10,48 @@ import std.string;
 import std.math;
 
 void main(string[] argv) {
-    write("How many T2 values do you long for in your heart? ");
-	int count = to!int(strip(readln()));
+    //write("How many T2 values do you long for in your heart? ");
+	int count = 1000_000;//to!int(strip(readln()));
 	if(count <= 0) return;
 
 
 	// generate ms stream
 	auto islands = ["-I", "10", "2", "0", "0", "0", "0", "0", "0", "0", "0", "0", "1"];
-	auto ms = pipeProcess(["ms", "2", to!string(count), "-L"] ~ islands, Redirect.stdout);
+	auto ms = pipeProcess(["ms", "2", to!string(count), "-T", "-L"]/* ~ islands*/, Redirect.stdout);
 	scope(exit) 
 		wait(ms.pid);
 
-	auto chunks = ms.stdout.byLine.drop(3).chunks(3);
-	auto nums = chunks.map!(chunk => chunk.drop(1).front.splitter('\t').drop(1).front.to!double);
+	auto chunks = ms.stdout.byLine.drop(3).chunks(4);
+	auto nums = chunks.map!(chunk => chunk.drop(2).front.splitter('\t').drop(1).front.to!double);
 
 	// debugging
 	auto debugNums = nums.array;
 
-	// generate histogram
-	const intervals = 64;
+	// generate histograms
+	const intervals = 100;
 	auto extremes = [1e-3, 1e2]; //reduce!(min, max)(nums.save);
 	auto timeVector = GetLogTimeVector(extremes[0], extremes[1], intervals);
 	auto histogram = GetHistogram(assumeSorted(timeVector), debugNums);
 
+	auto shiftedTimeVector = new double[intervals + 1];
+	shiftedTimeVector[0] = 0.0;
+	shiftedTimeVector[1..$] = (timeVector[1..$] + timeVector[0..$-1]) * 0.5;
+	auto shiftedHistogram = GetHistogram(assumeSorted(shiftedTimeVector), debugNums);
+
 	// generate F (distribution), f (density) and the IICR	
 	auto normalizedHist = new double[intervals];
-	normalizedHist[] = histogram[] / debugNums.length;
+	normalizedHist[] = histogram[] / count;
+	
+	auto normalizedShiftHist = new double[intervals];
+	normalizedShiftHist[] = shiftedHistogram[] / count;
 
 	auto distrib = normalizedHist.cumulativeFold!"a + b".array;
 	
+	auto shiftedDeltaTimes = new double[intervals];
+	shiftedDeltaTimes[] =  shiftedTimeVector[1..$] - shiftedTimeVector[0..$-1];	
+
 	auto density = new double[intervals];
-	density[] =  normalizedHist[] / (timeVector[1..$] - timeVector[0..$-1]);	
+	density[] =  normalizedShiftHist[] / (shiftedTimeVector[1..$] - shiftedTimeVector[0..$-1]);	
 
 	auto iicr = new double[intervals];
 	iicr[] = (1.0 - distrib[]) / density[];
@@ -57,10 +68,10 @@ void main(string[] argv) {
 	file.write("time=List");
 	file.write(timeVector[0..$-1]);
 	file.writeln(";");
-
-	file.write("hist=List");
-	file.write(histogram);
-	file.writeln(";");
+	//
+	//file.write("hist=List");
+	//file.write(histogram);
+	//file.writeln(";");
 
 	file.write("distrib=List");
 	file.write(distrib);
@@ -75,7 +86,7 @@ void main(string[] argv) {
 	file.writeln(";");
 
 	writeln("Done!");
-	readln();                           
+	//readln();                           
 }
 
 auto GetLogTimeVector(in double min, in double max, in int intervals) {
